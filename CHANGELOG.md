@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not classify a local `docker compose config` command failure as a network problem merely because its diagnostic output contains a `--timeout` configuration flag. Timeout detection now requires a timeout-error context.
+- Avoid treating standalone `429`, `502`, `503`, and `504` values in failed tool output—such as Pi truncation line numbers, timestamps, and SVG coordinates—as HTTP/network errors. Status-code detection now requires HTTP context or a standard HTTP reason phrase.
+
 ## [0.3.0] - 2026-09-02
 
 ### Added

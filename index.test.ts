@@ -272,6 +272,8 @@ function runTests() {
       run: () => {
         const cases = [
           "curl: (28) Operation timed out",
+          "Request timeout after 30 seconds",
+          "TimeoutError: request exceeded 30 seconds",
           "fetch failed: connect ECONNREFUSED 127.0.0.1:8080",
           "getaddrinfo ENOTFOUND api.example.com",
           "Error: socket hang up",
@@ -283,7 +285,9 @@ function runTests() {
           "SSL certificate verify failed",
           "ETIMEDOUT",
           "HTTP 502 Bad Gateway",
+          "HTTP/1.1 502 Bad Gateway",
           "503 Service Unavailable",
+          "status code: 504",
         ];
         for (const text of cases) {
           if (!isNetworkIssueResult({ isError: true, content: [{ type: "text", text }] })) {
@@ -301,6 +305,23 @@ function runTests() {
         });
         if (result) {
           throw new Error("Expected non-error result NOT to be flagged");
+        }
+      },
+    },
+    {
+      name: "isNetworkIssueResult: ignores bare timeout flags in local command failures",
+      run: () => {
+        const composeConfigFailure = [
+          "Dockerfile:69:CMD [\"gunicorn\", \"--timeout\", \"120\"]",
+          "healthcheck:\n  timeout: 3s",
+          "--- Compose CPU priorities after merge ---",
+          "Command exited with code 1",
+        ].join("\n");
+        if (isNetworkIssueResult({
+          isError: true,
+          content: [{ type: "text", text: composeConfigFailure }],
+        })) {
+          throw new Error("Expected docker compose config failure NOT to be flagged as a network issue");
         }
       },
     },
@@ -405,15 +426,32 @@ function runTests() {
       },
     },
     {
-      name: "isNetworkIssueResult: word boundaries for status codes and SSL",
+      name: "isNetworkIssueResult: requires HTTP context for status codes",
       run: () => {
-        const shouldNotFlag = ["line 1429", "error a502b", "xSSLx error", "14294"];
+        const shouldNotFlag = [
+          "line 1429",
+          "error a502b",
+          "xSSLx error",
+          "14294",
+          "[Showing lines 408-429 of 429 (50.0KB limit)]",
+          '{"timestamp":"2026-09-27 00:06:10,429","level":"INFO"}',
+          '<path d="m 0,0 c -1.701,1.668 -3.987,2.502">',
+          "Command failed after processing item 503",
+        ];
         for (const text of shouldNotFlag) {
           if (isNetworkIssueResult({ isError: true, content: [{ type: "text", text }] })) {
-            throw new Error(`Expected '${text}' NOT to be flagged (boundary)`);
+            throw new Error(`Expected '${text}' NOT to be flagged`);
           }
         }
-        const shouldFlag = ["429 Too Many Requests", "Error 502", "SSL certificate failed"];
+        const shouldFlag = [
+          "HTTP 429 Too Many Requests",
+          "HTTP/2 502 Bad Gateway",
+          "HTTP status 503",
+          "status code: 504",
+          "429 Too Many Requests",
+          "503 Service Unavailable",
+          "SSL certificate failed",
+        ];
         for (const text of shouldFlag) {
           if (!isNetworkIssueResult({ isError: true, content: [{ type: "text", text }] })) {
             throw new Error(`Expected '${text}' to be flagged`);
