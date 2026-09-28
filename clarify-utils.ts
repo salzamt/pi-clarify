@@ -45,7 +45,7 @@ When a tool call fails with a network, proxy, connectivity, or rate-limit error
 
 /** Exported for testing: regex matching network/proxy/rate-limit error signatures */
 export const NETWORK_ERROR_PATTERN =
-  /(network|proxy|timeout|timed out|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|EHOSTUNREACH|EAI_AGAIN|socket hang up|unreachable|bad gateway|rate\s*limit|quota|(?:HTTP(?:\/\d(?:\.\d)?)?\s+|(?:HTTP\s+)?status(?:\s+code)?\s*[:=]?\s*)(?:429|502|503|504)\b|\b429\s+Too Many Requests\b|\b502\s+Bad Gateway\b|\b503\s+Service Unavailable\b|\b504\s+Gateway Timeout\b|超时|代理|网络|连接被拒绝|curl:\s*\(\s*(7|28|35|56|60)\s*\)|\bSSL\b|certificate)/i;
+  /(network|proxy|timed out|\b(?:request|connection|socket|operation|network|read|write)\s+timeout\b|\btimeout\s+(?:error|exceeded|while|after|of)|\bTimeoutError\b|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|EHOSTUNREACH|EAI_AGAIN|socket hang up|unreachable|bad gateway|rate\s*limit|quota|(?:HTTP(?:\/\d(?:\.\d)?)?\s+|(?:HTTP\s+)?status(?:\s+code)?\s*[:=]?\s*)(?:429|502|503|504)\b|\b429\s+Too Many Requests\b|\b502\s+Bad Gateway\b|\b503\s+Service Unavailable\b|\b504\s+Gateway Timeout\b|超时|代理|网络|连接被拒绝|curl:\s*\(\s*(7|28|35|56|60)\s*\)|\bSSL\b|certificate)/i;
 
 /** Exported for testing: true when an errored tool result looks like a network/proxy/rate-limit failure */
 export function isNetworkIssueResult(result: {
@@ -69,6 +69,8 @@ export function isNetworkIssueResult(result: {
   } else {
     text = JSON.stringify(content ?? "");
   }
+  // A bare "timeout" commonly appears in local command flags and configuration
+  // (for example, `docker compose config` output), not just network failures.
   return NETWORK_ERROR_PATTERN.test(text);
 }
 
